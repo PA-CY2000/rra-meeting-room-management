@@ -43,42 +43,38 @@ export default function Login() {
 
         {error && <div className="alert alert-error">{error}</div>}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} autoComplete="off">
           <div className="form-group">
             <label className="form-label">EMAIL ADDRESS</label>
-            <div style={{ position: 'relative' }}>
-              <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: '15px' }}>✉</span>
-              <input
-                type="email"
-                className="form-control"
-                placeholder="Enter your email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                style={{ paddingLeft: '36px' }}
-                required
-              />
-            </div>
+            <input
+              type="email"
+              name="login-email"
+              className="form-control"
+              placeholder="Enter your email"
+              autoComplete="off"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              required
+            />
           </div>
           <div className="form-group">
             <label className="form-label">PASSWORD</label>
-            <div style={{ position: 'relative' }}>
-              <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: '15px' }}>🔒</span>
-              <input
-                type="password"
-                className="form-control"
-                placeholder="Password"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                style={{ paddingLeft: '36px' }}
-                required
-              />
-            </div>
+            <input
+              type="password"
+              name="login-password"
+              className="form-control"
+              placeholder="Password"
+              autoComplete="new-password"
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              required
+            />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="btn btn-primary"
+            className="btn btn-success"
             style={{ width: '100%', padding: '12px', fontSize: '15px', letterSpacing: '1px', marginTop: '8px', textTransform: 'uppercase', justifyContent: 'center' }}
           >
             {loading ? 'Signing in...' : 'Sign In'}
@@ -89,10 +85,6 @@ export default function Login() {
           Don't have an account?{' '}
           <Link to="/register" style={{ color: 'var(--rra-blue)', fontWeight: 700 }}>Register here</Link>
         </p>
-
-        <div style={{ textAlign: 'center', marginTop: '28px', paddingTop: '16px', borderTop: '1px solid #e5e7eb' }}>
-          <p style={{ fontSize: '12px', color: '#9ca3af' }}>🔒 RRA © {new Date().getFullYear()}</p>
-        </div>
       </div>
     </div>
   );

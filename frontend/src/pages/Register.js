@@ -43,18 +43,18 @@ export default function Register() {
 
         {error && <div className="alert alert-error">{error}</div>}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} autoComplete="off">
           <div className="form-group">
             <label className="form-label">FULL NAME</label>
-            <input type="text" className="form-control" placeholder="Enter your full name" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} required />
+            <input type="text" name="signup-name" className="form-control" placeholder="Enter your full name" autoComplete="off" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} required />
           </div>
           <div className="form-group">
             <label className="form-label">EMAIL ADDRESS</label>
-            <input type="email" className="form-control" placeholder="Enter your email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+            <input type="email" name="signup-email" className="form-control" placeholder="Enter your email" autoComplete="off" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
           </div>
           <div className="form-group">
             <label className="form-label">PASSWORD</label>
-            <input type="password" className="form-control" placeholder="Create a password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+            <input type="password" name="signup-password" className="form-control" placeholder="Create a password" autoComplete="new-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
           </div>
           <div className="form-group">
             <label className="form-label">ACCOUNT TYPE</label>
@@ -66,7 +66,7 @@ export default function Register() {
           <button
             type="submit"
             disabled={loading}
-            className="btn btn-primary"
+            className="btn btn-success"
             style={{ width: '100%', padding: '12px', fontSize: '15px', letterSpacing: '1px', marginTop: '8px', textTransform: 'uppercase', justifyContent: 'center' }}
           >
             {loading ? 'Creating account...' : 'Create Account'}
@@ -77,10 +77,6 @@ export default function Register() {
           Already have an account?{' '}
           <Link to="/login" style={{ color: 'var(--rra-blue)', fontWeight: 700 }}>Sign in</Link>
         </p>
-
-        <div style={{ textAlign: 'center', marginTop: '28px', paddingTop: '16px', borderTop: '1px solid #e5e7eb' }}>
-          <p style={{ fontSize: '12px', color: '#9ca3af' }}>🔒 RRA © {new Date().getFullYear()}</p>
-        </div>
       </div>
     </div>
   );
