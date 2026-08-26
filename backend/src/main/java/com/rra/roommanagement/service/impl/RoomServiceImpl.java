@@ -32,7 +32,7 @@ public class RoomServiceImpl implements RoomService {
                 .capacity(request.getCapacity())
                 .location(request.getLocation())
                 .description(request.getDescription())
-                .status(parseStatus(request.getStatus()))
+                .status(Room.RoomStatus.AVAILABLE)
                 .build();
         Room saved = roomRepository.save(room);
         log.info("Room created: {}", saved.getRoomName());
@@ -46,7 +46,7 @@ public class RoomServiceImpl implements RoomService {
         room.setCapacity(request.getCapacity());
         room.setLocation(request.getLocation());
         room.setDescription(request.getDescription());
-        room.setStatus(parseStatus(request.getStatus()));
+        room.setStatus(Room.RoomStatus.AVAILABLE);
         return toResponse(roomRepository.save(room));
     }
 
@@ -71,13 +71,14 @@ public class RoomServiceImpl implements RoomService {
             LocalDate until = booking.getEndDate();
             bookedUntilByRoom.merge(roomId, until, (a, b) -> a.isAfter(b) ? a : b);
         }
-        return roomRepository.findAll().stream().map(room -> {
-            RoomResponse response = toResponse(room);
-            LocalDate bookedUntil = bookedUntilByRoom.get(room.getId());
-            response.setCurrentlyBooked(bookedUntil != null);
-            response.setBookedUntil(bookedUntil);
-            return response;
-        }).toList();
+        return roomRepository.findAll().stream()
+                .map(room -> {
+                    RoomResponse response = toResponse(room);
+                    LocalDate bookedUntil = bookedUntilByRoom.get(room.getId());
+                    response.setCurrentlyBooked(bookedUntil != null);
+                    response.setBookedUntil(bookedUntil);
+                    return response;
+                }).toList();
     }
 
     @Override
@@ -89,11 +90,6 @@ public class RoomServiceImpl implements RoomService {
     private Room findById(Long id) {
         return roomRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found with id: " + id));
-    }
-
-    private Room.RoomStatus parseStatus(String status) {
-        if (status == null || status.isBlank()) return Room.RoomStatus.AVAILABLE;
-        return Room.RoomStatus.valueOf(status.toUpperCase());
     }
 
     public RoomResponse toResponse(Room room) {

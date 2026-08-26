@@ -39,6 +39,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/rooms/**").authenticated()
                 .requestMatchers("/api/rooms/**").hasRole("ADMIN")
                 .requestMatchers("/api/dashboard/**").hasRole("ADMIN")
+                .requestMatchers("/api/bookings/*/approve-cancel", "/api/bookings/*/reject-cancel").hasRole("ADMIN")
                 .requestMatchers("/api/bookings/*/approve", "/api/bookings/*/reject").hasRole("ADMIN")
                 .requestMatchers("/api/bookings/**").authenticated()
                 .requestMatchers("/api/holidays/**").hasRole("ADMIN")

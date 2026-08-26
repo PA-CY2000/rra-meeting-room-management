@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../api';
 import { useAuth } from '../AuthContext';
+import CustomSelect from '../components/CustomSelect';
 import RraLogo from '../rra-logo.png';
 
 export default function Register() {
@@ -58,10 +59,15 @@ export default function Register() {
           </div>
           <div className="form-group">
             <label className="form-label">ACCOUNT TYPE</label>
-            <select className="form-control" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-              <option value="USER">User (Book Rooms)</option>
-              <option value="ADMIN">Administrator</option>
-            </select>
+            <CustomSelect
+              required
+              value={form.role}
+              onChange={(role) => setForm({ ...form, role })}
+              options={[
+                { value: 'USER', label: 'User (Book Rooms)' },
+                { value: 'ADMIN', label: 'Administrator' },
+              ]}
+            />
           </div>
           <button
             type="submit"

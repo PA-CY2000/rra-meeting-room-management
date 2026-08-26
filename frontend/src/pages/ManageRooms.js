@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
+import CustomSelect from '../components/CustomSelect';
 import api from '../api';
 
-const emptyForm = { roomName: '', capacity: '', location: '', description: '', status: 'AVAILABLE' };
+const FLOORS = ['Ground', '1st Floor', '2nd Floor', '3rd Floor'];
+const emptyForm = { roomName: '', capacity: '', location: '', description: '' };
+const TEXT_ONLY = /^$|^(?=.*[A-Za-z])[A-Za-z .,'-]+$/;
 
 export default function ManageRooms() {
   const [rooms, setRooms] = useState([]);
@@ -12,6 +15,9 @@ export default function ManageRooms() {
   const [editId, setEditId] = useState(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteError, setDeleteError] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const fetchRooms = () => {
     api.get('/rooms').then((res) => setRooms(res.data.data)).finally(() => setLoading(false));
@@ -21,7 +27,7 @@ export default function ManageRooms() {
 
   const openAdd = () => { setForm(emptyForm); setEditId(null); setError(''); setShowModal(true); };
   const openEdit = (room) => {
-    setForm({ roomName: room.roomName, capacity: room.capacity, location: room.location, description: room.description || '', status: room.status });
+    setForm({ roomName: room.roomName, capacity: room.capacity, location: room.location, description: room.description || '' });
     setEditId(room.id);
     setError('');
     setShowModal(true);
@@ -30,12 +36,21 @@ export default function ManageRooms() {
   const handleSave = async (e) => {
     e.preventDefault();
     setError('');
+    if (!FLOORS.includes(form.location)) {
+      setError('Select a location: Ground, 1st Floor, 2nd Floor or 3rd Floor.');
+      return;
+    }
+    if (!TEXT_ONLY.test(form.description.trim())) {
+      setError('Description must be text only, with no numbers.');
+      return;
+    }
+    const payload = { ...form, description: form.description.trim() };
     setSaving(true);
     try {
       if (editId) {
-        await api.put(`/rooms/${editId}`, form);
+        await api.put(`/rooms/${editId}`, payload);
       } else {
-        await api.post('/rooms', form);
+        await api.post('/rooms', payload);
       }
       setShowModal(false);
       fetchRooms();
@@ -46,14 +61,29 @@ export default function ManageRooms() {
     }
   };
 
-  const handleDelete = async (id, name) => {
-    if (!window.confirm(`Delete room "${name}"?`)) return;
+  const openDelete = (room) => {
+    setDeleteError('');
+    setDeleteTarget(room);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteError('');
     try {
-      await api.delete(`/rooms/${id}`);
+      await api.delete(`/rooms/${deleteTarget.id}`);
+      setDeleteTarget(null);
       fetchRooms();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete room.');
+      setDeleteError(err.response?.data?.message || 'Failed to delete room.');
+    } finally {
+      setDeleting(false);
     }
+  };
+
+  const occupancy = (room) => {
+    if (room.currentlyBooked) return { text: 'Booked', className: 'badge badge-booked' };
+    return { text: 'Available', className: 'badge badge-available' };
   };
 
   return (
@@ -92,12 +122,22 @@ export default function ManageRooms() {
                   <td>{room.location}</td>
                   <td>{room.description || '—'}</td>
                   <td>
-                    <span className={`badge badge-${room.status.toLowerCase()}`}>{room.status}</span>
+                    {(() => {
+                      const label = occupancy(room);
+                      return (
+                        <>
+                          <span className={label.className}>{label.text}</span>
+                          {label.text === 'Booked' && room.bookedUntil && (
+                            <span style={{ marginLeft: '8px', fontSize: '12px', color: '#6b7280' }}>until {room.bookedUntil}</span>
+                          )}
+                        </>
+                      );
+                    })()}
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button className="btn btn-outline btn-sm" onClick={() => openEdit(room)}>Edit</button>
-                      <button className="btn btn-danger btn-sm" onClick={() => handleDelete(room.id, room.roomName)}>Delete</button>
+                      <button className="btn btn-danger btn-sm" onClick={() => openDelete(room)}>Delete</button>
                     </div>
                   </td>
                 </tr>
@@ -106,6 +146,32 @@ export default function ManageRooms() {
           </table>
         )}
       </div>
+
+      {deleteTarget && (
+        <div className="modal-overlay" onClick={() => setDeleteTarget(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Delete Room</h2>
+              <button className="modal-close" onClick={() => setDeleteTarget(null)}>×</button>
+            </div>
+            <div className="modal-body">
+              {deleteError && <div className="alert alert-error">{deleteError}</div>}
+              <p style={{ marginBottom: '12px' }}>This room will be removed from the list.</p>
+              <div className="alert alert-info">
+                <strong>Room:</strong> {deleteTarget.roomName}<br />
+                <strong>Location:</strong> {deleteTarget.location}<br />
+                <strong>Capacity:</strong> {deleteTarget.capacity} people
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-outline" onClick={() => setDeleteTarget(null)}>Back</button>
+              <button type="button" className="btn btn-danger" disabled={deleting} onClick={confirmDelete}>
+                {deleting ? 'Deleting...' : 'Delete Room'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
@@ -118,29 +184,31 @@ export default function ManageRooms() {
               <div className="modal-body">
                 {error && <div className="alert alert-error">{error}</div>}
                 <div className="form-group">
+                  <label className="form-label">Location *</label>
+                  <CustomSelect
+                    required
+                    placeholder="Select location"
+                    value={form.location}
+                    onChange={(location) => setForm({ ...form, location })}
+                    options={[
+                      ...FLOORS.map((floor) => ({ value: floor, label: floor })),
+                      ...(form.location && !FLOORS.includes(form.location)
+                        ? [{ value: form.location, label: form.location }]
+                        : []),
+                    ]}
+                  />
+                </div>
+                <div className="form-group">
                   <label className="form-label">Room Name *</label>
                   <input className="form-control" value={form.roomName} onChange={(e) => setForm({ ...form, roomName: e.target.value })} required placeholder="e.g. Conference Room A" />
                 </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">Capacity *</label>
-                    <input type="number" className="form-control" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} required min="1" placeholder="Number of people" />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Status *</label>
-                    <select className="form-control" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-                      <option value="AVAILABLE">Available</option>
-                      <option value="MAINTENANCE">Maintenance</option>
-                    </select>
-                  </div>
-                </div>
                 <div className="form-group">
-                  <label className="form-label">Location *</label>
-                  <input className="form-control" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} required placeholder="e.g. 2nd Floor, Block A" />
+                  <label className="form-label">Capacity *</label>
+                  <input type="number" className="form-control" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} required min="1" placeholder="Number of people" />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Description</label>
-                  <textarea className="form-control" rows="3" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Optional description..." />
+                  <textarea className="form-control" rows="3" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Text only, no numbers..." />
                 </div>
               </div>
               <div className="modal-footer">

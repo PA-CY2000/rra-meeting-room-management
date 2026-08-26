@@ -7,6 +7,7 @@ import com.rra.roommanagement.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -21,9 +22,12 @@ public class DataInitializer implements CommandLineRunner {
     private final UserRepository userRepository;
     private final HolidayRepository holidayRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JdbcTemplate jdbcTemplate;
 
     @Override
     public void run(String... args) {
+        updateBookingStatusConstraint();
+        clearRoomMaintenance();
         if (!userRepository.existsByEmail("admin@rra.gov.rw")) {
             userRepository.save(User.builder()
                     .fullName("RRA Administrator")
@@ -99,5 +103,27 @@ public class DataInitializer implements CommandLineRunner {
             }, () -> holidayRepository.save(Holiday.builder().date(date).name(name).build()));
         }
         log.info("Rwanda public holidays seeded.");
+    }
+
+    private void updateBookingStatusConstraint() {
+        try {
+            jdbcTemplate.execute("ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_status_check");
+            jdbcTemplate.execute(
+                "ALTER TABLE bookings ADD CONSTRAINT bookings_status_check "
+                + "CHECK (status IN ('PENDING','APPROVED','REJECTED','CANCELLED','CANCEL_REQUESTED'))"
+            );
+            log.info("Booking status constraint updated.");
+        } catch (Exception e) {
+            log.warn("Could not update bookings_status_check: {}", e.getMessage());
+        }
+    }
+
+    private void clearRoomMaintenance() {
+        try {
+            jdbcTemplate.execute("UPDATE rooms SET status = 'AVAILABLE' WHERE status = 'MAINTENANCE'");
+            log.info("Room maintenance status removed.");
+        } catch (Exception e) {
+            log.warn("Could not clear room maintenance status: {}", e.getMessage());
+        }
     }
 }

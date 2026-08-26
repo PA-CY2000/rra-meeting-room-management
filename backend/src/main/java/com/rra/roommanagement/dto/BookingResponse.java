@@ -14,6 +14,8 @@ public class BookingResponse {
     private String purpose;
     private LocalDate startDate;
     private LocalDate endDate;
+    private String startTime;
+    private String endTime;
     private String status;
     private LocalDateTime createdAt;
     private String approvedByName;

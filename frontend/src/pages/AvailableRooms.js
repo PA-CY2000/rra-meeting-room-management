@@ -11,6 +11,8 @@ export default function AvailableRooms() {
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [purpose, setPurpose] = useState('');
   const [bookingError, setBookingError] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState('');
@@ -21,7 +23,7 @@ export default function AvailableRooms() {
   const fetchRooms = () => {
     setLoading(true);
     api.get('/rooms')
-      .then((res) => setRooms(res.data.data))
+      .then((res) => setRooms(res.data.data || []))
       .catch((err) => setError(err.response?.data?.message || 'Failed to load rooms.'))
       .finally(() => setLoading(false));
   };
@@ -29,17 +31,16 @@ export default function AvailableRooms() {
   useEffect(() => { fetchRooms(); }, []);
 
   const roomLabel = (room) => {
-    if (room.status === 'MAINTENANCE') return { text: 'Maintenance', className: 'badge badge-maintenance' };
     if (room.currentlyBooked) return { text: 'Booked', className: 'badge badge-booked' };
     return { text: 'Available', className: 'badge badge-available' };
   };
-
-  const canBook = (room) => room.status !== 'MAINTENANCE' && !room.currentlyBooked;
 
   const openBooking = (room) => {
     setSelectedRoom(room);
     setStartDate('');
     setEndDate('');
+    setStartTime('');
+    setEndTime('');
     setPurpose('');
     setBookingError('');
     setBookingSuccess('');
@@ -50,9 +51,25 @@ export default function AvailableRooms() {
     e.preventDefault();
     setBookingError('');
     setBookingSuccess('');
+    const purposeText = purpose.trim();
+    if (purposeText.length < 3 || !/[A-Za-z]/.test(purposeText)) {
+      setBookingError('Purpose must be text, at least 3 characters.');
+      return;
+    }
+    if (startDate === endDate && startTime && endTime && startTime >= endTime) {
+      setBookingError('End time must be after start time.');
+      return;
+    }
     setBooking(true);
     try {
-      await api.post('/bookings', { roomId: selectedRoom.id, purpose, startDate, endDate });
+      await api.post('/bookings', {
+        roomId: selectedRoom.id,
+        purpose: purposeText,
+        startDate,
+        endDate,
+        startTime,
+        endTime,
+      });
       setBookingSuccess('Booking submitted! Waiting for admin approval.');
       setTimeout(() => {
         setShowModal(false);
@@ -69,7 +86,7 @@ export default function AvailableRooms() {
     <Layout title="Available Rooms">
       <div className="card">
         <div className="card-header">
-          <h2>All Rooms ({rooms.length})</h2>
+          <h2>Available Rooms ({rooms.length})</h2>
         </div>
 
         {error && <div className="alert alert-error" style={{ margin: '16px' }}>{error}</div>}
@@ -78,7 +95,7 @@ export default function AvailableRooms() {
           <div className="loading"><div className="spinner"></div> Loading rooms...</div>
         ) : rooms.length === 0 ? (
           <div className="empty-state">
-            <p>No rooms have been added yet.</p>
+            <p>No rooms are available to book.</p>
           </div>
         ) : (
           <table>
@@ -87,7 +104,6 @@ export default function AvailableRooms() {
                 <th>#</th>
                 <th>Room Name</th>
                 <th>Capacity</th>
-                <th>Status</th>
                 <th>Availability</th>
                 <th>Action</th>
               </tr>
@@ -101,24 +117,15 @@ export default function AvailableRooms() {
                     <td><strong>{room.roomName}</strong></td>
                     <td>{room.capacity} people</td>
                     <td>
-                      <span className={`badge badge-${room.status.toLowerCase()}`}>{room.status}</span>
-                    </td>
-                    <td>
                       <span className={availability.className}>{availability.text}</span>
                       {room.currentlyBooked && room.bookedUntil && (
                         <span style={{ marginLeft: '8px', fontSize: '12px', color: '#6b7280' }}>until {room.bookedUntil}</span>
                       )}
                     </td>
                     <td>
-                      {canBook(room) ? (
-                        <button className="btn btn-gold btn-sm" onClick={() => openBooking(room)}>
-                          Book
-                        </button>
-                      ) : (
-                        <button className="btn btn-outline btn-sm" disabled>
-                          {room.status === 'MAINTENANCE' ? 'Maintenance' : 'Booked'}
-                        </button>
-                      )}
+                      <button className="btn btn-gold btn-sm" onClick={() => openBooking(room)}>
+                        Book
+                      </button>
                     </td>
                   </tr>
                 );
@@ -154,12 +161,22 @@ export default function AvailableRooms() {
                     <input type="date" className="form-control" value={endDate} min={startDate || today} onChange={(e) => setEndDate(e.target.value)} required />
                   </div>
                 </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Start Time *</label>
+                    <input type="time" className="form-control" value={startTime} onChange={(e) => setStartTime(e.target.value)} required />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">End Time *</label>
+                    <input type="time" className="form-control" value={endTime} onChange={(e) => setEndTime(e.target.value)} required />
+                  </div>
+                </div>
                 <div className="form-group">
                   <label className="form-label">Purpose of Booking *</label>
-                  <textarea className="form-control" rows="3" value={purpose} onChange={(e) => setPurpose(e.target.value)} required placeholder="e.g. Team meeting, Training session, Client presentation..." />
+                  <textarea className="form-control" rows="3" value={purpose} onChange={(e) => setPurpose(e.target.value)} required minLength={3} placeholder="e.g. Team meeting, Training session, Client presentation..." />
                 </div>
                 <div className="alert alert-info" style={{ fontSize: '12px' }}>
-                  Weekends and public holidays are not allowed. Your booking will be submitted as <strong>PENDING</strong> and requires admin approval.
+                  Weekends and public holidays are not allowed. Same hours cannot be booked if another request is pending or approved.
                 </div>
               </div>
               <div className="modal-footer">

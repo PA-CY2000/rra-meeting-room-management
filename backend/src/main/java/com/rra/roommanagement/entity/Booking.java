@@ -34,6 +34,12 @@ public class Booking {
     @Column(nullable = false)
     private LocalDate endDate;
 
+    @Column(columnDefinition = "time")
+    private java.time.LocalTime startTime;
+
+    @Column(columnDefinition = "time")
+    private java.time.LocalTime endTime;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private BookingStatus status;
@@ -48,7 +54,7 @@ public class Booking {
     private LocalDateTime approvedAt;
 
     public enum BookingStatus {
-        PENDING, APPROVED, REJECTED
+        PENDING, APPROVED, REJECTED, CANCELLED, CANCEL_REQUESTED
     }
 
     @PrePersist

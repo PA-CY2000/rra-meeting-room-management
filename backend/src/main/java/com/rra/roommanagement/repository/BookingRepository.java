@@ -11,24 +11,28 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     List<Booking> findByUserId(Long userId);
 
+    List<Booking> findByUserIdOrderByCreatedAtDesc(Long userId);
+
+    List<Booking> findAllByOrderByCreatedAtDesc();
+
     List<Booking> findByStatus(Booking.BookingStatus status);
 
     @Query("""
-        SELECT COUNT(b) > 0 FROM Booking b
+        SELECT b FROM Booking b
         WHERE b.room.id = :roomId
-        AND b.status = 'APPROVED'
+        AND b.status IN ('PENDING', 'APPROVED', 'CANCEL_REQUESTED')
         AND b.startDate <= :endDate
         AND b.endDate >= :startDate
     """)
-    boolean existsOverlappingApprovedBooking(@Param("roomId") Long roomId,
-                                              @Param("startDate") LocalDate startDate,
-                                              @Param("endDate") LocalDate endDate);
+    List<Booking> findBlockingOverlaps(@Param("roomId") Long roomId,
+                                       @Param("startDate") LocalDate startDate,
+                                       @Param("endDate") LocalDate endDate);
 
     long countByStatus(Booking.BookingStatus status);
 
     @Query("""
         SELECT b FROM Booking b JOIN FETCH b.room
-        WHERE b.status = 'APPROVED'
+        WHERE b.status IN ('PENDING', 'APPROVED', 'CANCEL_REQUESTED')
         AND b.startDate <= :date
         AND b.endDate >= :date
     """)

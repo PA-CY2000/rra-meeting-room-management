@@ -52,4 +52,22 @@ public class BookingController {
         return ResponseEntity.ok(ApiResponse.success("Booking rejected",
                 bookingService.rejectBooking(id, auth.getName())));
     }
+
+    @PutMapping("/{id}/cancel")
+    public ResponseEntity<ApiResponse<BookingResponse>> cancel(@PathVariable Long id, Authentication auth) {
+        return ResponseEntity.ok(ApiResponse.success("Cancel processed",
+                bookingService.cancelBooking(id, auth.getName())));
+    }
+
+    @PutMapping("/{id}/approve-cancel")
+    public ResponseEntity<ApiResponse<BookingResponse>> approveCancel(@PathVariable Long id, Authentication auth) {
+        return ResponseEntity.ok(ApiResponse.success("Cancellation approved",
+                bookingService.approveCancel(id, auth.getName())));
+    }
+
+    @PutMapping("/{id}/reject-cancel")
+    public ResponseEntity<ApiResponse<BookingResponse>> rejectCancel(@PathVariable Long id, Authentication auth) {
+        return ResponseEntity.ok(ApiResponse.success("Cancellation rejected",
+                bookingService.rejectCancel(id, auth.getName())));
+    }
 }
