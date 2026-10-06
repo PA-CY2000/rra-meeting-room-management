@@ -1,15 +1,11 @@
 package com.rra.roommanagement.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
 import java.time.LocalDate;
 
+// This class represents a public holiday when bookings are not allowed
 @Entity
 @Table(name = "holidays")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class Holiday {
 
     @Id
@@ -21,4 +17,13 @@ public class Holiday {
 
     @Column(nullable = false)
     private String name;
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public LocalDate getDate() { return date; }
+    public void setDate(LocalDate date) { this.date = date; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 }

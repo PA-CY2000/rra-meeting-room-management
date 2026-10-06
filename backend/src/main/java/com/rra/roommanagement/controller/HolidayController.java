@@ -7,18 +7,21 @@ import com.rra.roommanagement.exception.BadRequestException;
 import com.rra.roommanagement.exception.ResourceNotFoundException;
 import com.rra.roommanagement.repository.HolidayRepository;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+// Handles adding, listing and deleting public holidays
 @RestController
 @RequestMapping("/api/holidays")
-@RequiredArgsConstructor
 public class HolidayController {
 
     private final HolidayRepository holidayRepository;
+
+    public HolidayController(HolidayRepository holidayRepository) {
+        this.holidayRepository = holidayRepository;
+    }
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<Holiday>>> getAll() {
@@ -30,7 +33,9 @@ public class HolidayController {
         if (holidayRepository.existsByDate(request.getDate())) {
             throw new BadRequestException("Holiday already exists for this date.");
         }
-        Holiday holiday = Holiday.builder().date(request.getDate()).name(request.getName()).build();
+        Holiday holiday = new Holiday();
+        holiday.setDate(request.getDate());
+        holiday.setName(request.getName());
         return ResponseEntity.ok(ApiResponse.success("Holiday added", holidayRepository.save(holiday)));
     }
 

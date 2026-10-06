@@ -13,6 +13,8 @@ import AvailableRooms from './pages/AvailableRooms';
 import MyBookings from './pages/MyBookings';
 import './index.css';
 
+// PrivateRoute protects pages that require login
+// If a role is specified, it also checks the user's role
 function PrivateRoute({ children, role }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" />;

@@ -12,8 +12,6 @@ import com.rra.roommanagement.repository.HolidayRepository;
 import com.rra.roommanagement.repository.RoomRepository;
 import com.rra.roommanagement.repository.UserRepository;
 import com.rra.roommanagement.service.BookingService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,12 +25,12 @@ import java.util.List;
 import java.util.Set;
 
 @Service
-@RequiredArgsConstructor
-@Slf4j
 @Transactional
 public class BookingServiceImpl implements BookingService {
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
+
+    // Statuses that block a room from being double-booked
     private static final Set<Booking.BookingStatus> BLOCKING_STATUSES =
             EnumSet.of(Booking.BookingStatus.PENDING, Booking.BookingStatus.APPROVED, Booking.BookingStatus.CANCEL_REQUESTED);
 
@@ -41,22 +39,35 @@ public class BookingServiceImpl implements BookingService {
     private final UserRepository userRepository;
     private final HolidayRepository holidayRepository;
 
+    public BookingServiceImpl(BookingRepository bookingRepository, RoomRepository roomRepository,
+                               UserRepository userRepository, HolidayRepository holidayRepository) {
+        this.bookingRepository = bookingRepository;
+        this.roomRepository = roomRepository;
+        this.userRepository = userRepository;
+        this.holidayRepository = holidayRepository;
+    }
+
     @Override
     public BookingResponse createBooking(BookingRequest request, String userEmail) {
+        // Validate dates
         if (request.getStartDate().isAfter(request.getEndDate())) {
             throw new BadRequestException("Start date cannot be after end date.");
         }
+
         LocalDateTime newStart = LocalDateTime.of(request.getStartDate(), request.getStartTime());
         LocalDateTime newEnd = LocalDateTime.of(request.getEndDate(), request.getEndTime());
+
         if (!newStart.isBefore(newEnd)) {
             throw new BadRequestException("Start time must be before end time.");
         }
 
+        // Check no weekend or holiday
         validateNoWeekend(request.getStartDate());
         validateNoWeekend(request.getEndDate());
         validateNoHoliday(request.getStartDate());
         validateNoHoliday(request.getEndDate());
 
+        // Check room is not already booked for this time
         if (hasTimeOverlap(request.getRoomId(), newStart, newEnd, null)) {
             throw new BadRequestException("This room is already booked for the selected date and hours.");
         }
@@ -66,32 +77,31 @@ public class BookingServiceImpl implements BookingService {
         Room room = roomRepository.findById(request.getRoomId())
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
 
-        Booking booking = Booking.builder()
-                .user(user)
-                .room(room)
-                .purpose(request.getPurpose().trim())
-                .startDate(request.getStartDate())
-                .endDate(request.getEndDate())
-                .startTime(request.getStartTime())
-                .endTime(request.getEndTime())
-                .status(Booking.BookingStatus.PENDING)
-                .build();
+        // Create and save the booking
+        Booking booking = new Booking();
+        booking.setUser(user);
+        booking.setRoom(room);
+        booking.setPurpose(request.getPurpose().trim());
+        booking.setStartDate(request.getStartDate());
+        booking.setEndDate(request.getEndDate());
+        booking.setStartTime(request.getStartTime());
+        booking.setEndTime(request.getEndTime());
 
-        Booking saved = bookingRepository.save(booking);
-        log.info("Booking created by {} for room {}", userEmail, room.getRoomName());
-        return toResponse(saved);
+        return toResponse(bookingRepository.save(booking));
     }
 
     @Override
     public List<BookingResponse> getAllBookings() {
-        return bookingRepository.findAllByOrderByCreatedAtDesc().stream().map(this::toResponse).toList();
+        return bookingRepository.findAllByOrderByCreatedAtDesc()
+                .stream().map(this::toResponse).toList();
     }
 
     @Override
     public List<BookingResponse> getMyBookings(String userEmail) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        return bookingRepository.findByUserIdOrderByCreatedAtDesc(user.getId()).stream().map(this::toResponse).toList();
+        return bookingRepository.findByUserIdOrderByCreatedAtDesc(user.getId())
+                .stream().map(this::toResponse).toList();
     }
 
     @Override
@@ -105,9 +115,8 @@ public class BookingServiceImpl implements BookingService {
         if (booking.getStatus() != Booking.BookingStatus.PENDING) {
             throw new BadRequestException("Only pending bookings can be approved.");
         }
-        LocalDateTime start = toStart(booking);
-        LocalDateTime end = toEnd(booking);
-        if (hasTimeOverlap(booking.getRoom().getId(), start, end, booking.getId())) {
+        // Check no overlap before approving
+        if (hasTimeOverlap(booking.getRoom().getId(), toStart(booking), toEnd(booking), booking.getId())) {
             throw new BadRequestException("This room is already booked for the selected date and hours.");
         }
         User admin = userRepository.findByEmail(adminEmail)
@@ -115,7 +124,6 @@ public class BookingServiceImpl implements BookingService {
         booking.setStatus(Booking.BookingStatus.APPROVED);
         booking.setApprovedBy(admin);
         booking.setApprovedAt(LocalDateTime.now());
-        log.info("Booking {} approved by {}", id, adminEmail);
         return toResponse(bookingRepository.save(booking));
     }
 
@@ -130,7 +138,6 @@ public class BookingServiceImpl implements BookingService {
         booking.setStatus(Booking.BookingStatus.REJECTED);
         booking.setApprovedBy(admin);
         booking.setApprovedAt(LocalDateTime.now());
-        log.info("Booking {} rejected by {}", id, adminEmail);
         return toResponse(bookingRepository.save(booking));
     }
 
@@ -140,16 +147,17 @@ public class BookingServiceImpl implements BookingService {
         if (!booking.getUser().getEmail().equalsIgnoreCase(userEmail)) {
             throw new BadRequestException("You can only cancel your own bookings.");
         }
+        if (reason != null && !reason.isBlank()) {
+            booking.setCancelReason(reason.trim());
+        }
+        // Pending bookings are cancelled immediately
         if (booking.getStatus() == Booking.BookingStatus.PENDING) {
             booking.setStatus(Booking.BookingStatus.CANCELLED);
-            if (reason != null && !reason.isBlank()) booking.setCancelReason(reason.trim());
-            log.info("Pending booking {} cancelled by {}", id, userEmail);
             return toResponse(bookingRepository.save(booking));
         }
+        // Approved bookings need admin approval to cancel
         if (booking.getStatus() == Booking.BookingStatus.APPROVED) {
             booking.setStatus(Booking.BookingStatus.CANCEL_REQUESTED);
-            if (reason != null && !reason.isBlank()) booking.setCancelReason(reason.trim());
-            log.info("Cancel requested for approved booking {} by {}", id, userEmail);
             return toResponse(bookingRepository.save(booking));
         }
         throw new BadRequestException("This booking cannot be cancelled.");
@@ -166,7 +174,6 @@ public class BookingServiceImpl implements BookingService {
         booking.setStatus(Booking.BookingStatus.CANCELLED);
         booking.setApprovedBy(admin);
         booking.setApprovedAt(LocalDateTime.now());
-        log.info("Cancel request {} approved by {}", id, adminEmail);
         return toResponse(bookingRepository.save(booking));
     }
 
@@ -181,30 +188,35 @@ public class BookingServiceImpl implements BookingService {
         booking.setStatus(Booking.BookingStatus.APPROVED);
         booking.setApprovedBy(admin);
         booking.setApprovedAt(LocalDateTime.now());
-        log.info("Cancel request {} rejected by {}", id, adminEmail);
         return toResponse(bookingRepository.save(booking));
     }
 
+    // Check if a room is already booked for the given time range
     private boolean hasTimeOverlap(Long roomId, LocalDateTime newStart, LocalDateTime newEnd, Long excludeId) {
-        List<Booking> candidates = bookingRepository.findBlockingOverlaps(
+        List<Booking> existing = bookingRepository.findBlockingOverlaps(
                 roomId, newStart.toLocalDate(), newEnd.toLocalDate(), BLOCKING_STATUSES);
-        return candidates.stream()
-                .filter(b -> excludeId == null || !b.getId().equals(excludeId))
-                .anyMatch(b -> {
-                    LocalDateTime existingStart = toStart(b);
-                    LocalDateTime existingEnd = toEnd(b);
-                    return existingStart.isBefore(newEnd) && existingEnd.isAfter(newStart);
-                });
+        for (Booking b : existing) {
+            if (excludeId != null && b.getId().equals(excludeId)) continue;
+            LocalDateTime existStart = toStart(b);
+            LocalDateTime existEnd = toEnd(b);
+            if (existStart.isBefore(newEnd) && existEnd.isAfter(newStart)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private LocalDateTime toStart(Booking b) {
-        return LocalDateTime.of(b.getStartDate(), b.getStartTime() != null ? b.getStartTime() : LocalTime.MIN);
+        LocalTime time = b.getStartTime() != null ? b.getStartTime() : LocalTime.MIN;
+        return LocalDateTime.of(b.getStartDate(), time);
     }
 
     private LocalDateTime toEnd(Booking b) {
-        return LocalDateTime.of(b.getEndDate(), b.getEndTime() != null ? b.getEndTime() : LocalTime.MAX);
+        LocalTime time = b.getEndTime() != null ? b.getEndTime() : LocalTime.MAX;
+        return LocalDateTime.of(b.getEndDate(), time);
     }
 
+    // Reject if date falls on weekend
     private void validateNoWeekend(LocalDate date) {
         DayOfWeek day = date.getDayOfWeek();
         if (day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY) {
@@ -212,6 +224,7 @@ public class BookingServiceImpl implements BookingService {
         }
     }
 
+    // Reject if date is a public holiday
     private void validateNoHoliday(LocalDate date) {
         if (holidayRepository.existsByDate(date)) {
             throw new BadRequestException("Bookings on public holidays are not allowed.");
@@ -223,6 +236,7 @@ public class BookingServiceImpl implements BookingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Booking not found with id: " + id));
     }
 
+    // Convert Booking entity to BookingResponse DTO
     public BookingResponse toResponse(Booking b) {
         BookingResponse r = new BookingResponse();
         r.setId(b.getId());

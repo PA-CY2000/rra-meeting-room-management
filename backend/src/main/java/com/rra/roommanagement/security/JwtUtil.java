@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.util.Date;
 
+// This class handles creating and reading JWT tokens
 @Component
 public class JwtUtil {
 
@@ -17,10 +18,12 @@ public class JwtUtil {
     @Value("${jwt.expiration}")
     private long expiration;
 
+    // Create a secret key from the configured secret string
     private SecretKey getKey() {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
+    // Generate a JWT token with user email and role
     public String generateToken(String email, String role) {
         return Jwts.builder()
                 .subject(email)
@@ -31,14 +34,17 @@ public class JwtUtil {
                 .compact();
     }
 
+    // Get email from token
     public String extractEmail(String token) {
         return getClaims(token).getSubject();
     }
 
+    // Get role from token
     public String extractRole(String token) {
         return getClaims(token).get("role", String.class);
     }
 
+    // Check if token is valid
     public boolean isTokenValid(String token) {
         try {
             getClaims(token);
@@ -49,6 +55,7 @@ public class JwtUtil {
     }
 
     private Claims getClaims(String token) {
-        return Jwts.parser().verifyWith(getKey()).build().parseSignedClaims(token).getPayload();
+        return Jwts.parser().verifyWith(getKey()).build()
+                .parseSignedClaims(token).getPayload();
     }
 }

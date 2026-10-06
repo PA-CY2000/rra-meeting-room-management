@@ -5,7 +5,6 @@ import com.rra.roommanagement.dto.RoomRequest;
 import com.rra.roommanagement.dto.RoomResponse;
 import com.rra.roommanagement.service.RoomService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,12 +12,16 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 
+// Handles all room-related API requests
 @RestController
 @RequestMapping("/api/rooms")
-@RequiredArgsConstructor
 public class RoomController {
 
     private final RoomService roomService;
+
+    public RoomController(RoomService roomService) {
+        this.roomService = roomService;
+    }
 
     @PostMapping
     public ResponseEntity<ApiResponse<RoomResponse>> create(@Valid @RequestBody RoomRequest request) {

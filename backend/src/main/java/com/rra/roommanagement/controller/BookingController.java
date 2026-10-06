@@ -5,7 +5,6 @@ import com.rra.roommanagement.dto.BookingRequest;
 import com.rra.roommanagement.dto.BookingResponse;
 import com.rra.roommanagement.service.BookingService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -14,10 +13,13 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/bookings")
-@RequiredArgsConstructor
 public class BookingController {
 
     private final BookingService bookingService;
+
+    public BookingController(BookingService bookingService) {
+        this.bookingService = bookingService;
+    }
 
     @PostMapping
     public ResponseEntity<ApiResponse<BookingResponse>> create(@Valid @RequestBody BookingRequest request,
