@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import CustomSelect from '../components/CustomSelect';
 import api from '../api';
@@ -15,9 +16,21 @@ export default function ManageRooms() {
   const [editId, setEditId] = useState(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteError, setDeleteError] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('add') === '1') {
+      setForm(emptyForm);
+      setEditId(null);
+      setError('');
+      setShowModal(true);
+      setSearchParams({});
+    }
+  }, [searchParams]);
 
   const fetchRooms = () => {
     api.get('/rooms').then((res) => setRooms(res.data.data)).finally(() => setLoading(false));
@@ -49,11 +62,14 @@ export default function ManageRooms() {
     try {
       if (editId) {
         await api.put(`/rooms/${editId}`, payload);
+        setSuccessMsg('Room updated successfully!');
       } else {
         await api.post('/rooms', payload);
+        setSuccessMsg('Room added successfully!');
       }
       setShowModal(false);
       fetchRooms();
+      setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to save room.');
     } finally {
@@ -91,8 +107,8 @@ export default function ManageRooms() {
       <div className="card">
         <div className="card-header">
           <h2>All Rooms ({rooms.length})</h2>
-          <button className="btn btn-gold" onClick={openAdd}>+ Add Room</button>
         </div>
+        {successMsg && <div className="alert alert-success" style={{ margin: '16px' }}>{successMsg}</div>}
 
         {loading ? (
           <div className="loading"><div className="spinner"></div> Loading...</div>

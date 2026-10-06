@@ -10,7 +10,4 @@ public class RegisterRequest {
     private String fullName;
     @NotBlank @Email
     private String email;
-    @NotBlank
-    private String password;
-    private String role; // ADMIN or USER, defaults to USER
 }

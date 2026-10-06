@@ -2,8 +2,6 @@ package com.rra.roommanagement.dto;
 
 import lombok.Data;
 
-import java.time.LocalDate;
-
 @Data
 public class RoomResponse {
     private Long id;
@@ -13,5 +11,8 @@ public class RoomResponse {
     private String description;
     private String status;
     private boolean currentlyBooked;
-    private LocalDate bookedUntil;
+    private String bookedUntil;
+    private String bookedFrom;
+    private String bookedFromTime;
+    private String bookedUntilTime;
 }

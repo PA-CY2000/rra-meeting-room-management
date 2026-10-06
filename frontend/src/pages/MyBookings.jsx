@@ -7,6 +7,7 @@ export default function MyBookings() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
   const [cancelError, setCancelError] = useState('');
 
   const fetchBookings = () => {
@@ -32,15 +33,31 @@ export default function MyBookings() {
 
   const openCancel = (booking) => {
     setCancelError('');
+    setCancelReason('');
     setCancelTarget(booking);
+  };
+
+  const wordCount = (text) => text.trim().split(/\s+/).filter(Boolean).length;
+
+  const handleReasonChange = (e) => {
+    const val = e.target.value;
+    if (wordCount(val) <= 10) setCancelReason(val);
   };
 
   const confirmCancel = async () => {
     if (!cancelTarget) return;
+    if (!cancelReason.trim()) {
+      setCancelError('Please provide a reason for cancellation.');
+      return;
+    }
+    if (wordCount(cancelReason) > 10) {
+      setCancelError('Reason must be 10 words or less.');
+      return;
+    }
     setActionLoading(cancelTarget.id);
     setCancelError('');
     try {
-      await api.put(`/bookings/${cancelTarget.id}/cancel`);
+      await api.put(`/bookings/${cancelTarget.id}/cancel`, { reason: cancelReason.trim() });
       setCancelTarget(null);
       fetchBookings();
     } catch (err) {
@@ -55,6 +72,8 @@ export default function MyBookings() {
     return `${b.startDate} to ${b.endDate}${time}`;
   };
 
+  const remaining = 10 - wordCount(cancelReason);
+
   return (
     <Layout title="My Bookings">
       <div className="card">
@@ -65,9 +84,7 @@ export default function MyBookings() {
         {loading ? (
           <div className="loading"><div className="spinner"></div> Loading...</div>
         ) : bookings.length === 0 ? (
-          <div className="empty-state">
-            <p>You have not made any bookings yet.</p>
-          </div>
+          <div className="empty-state"><p>You have not made any bookings yet.</p></div>
         ) : (
           <table>
             <thead>
@@ -119,15 +136,30 @@ export default function MyBookings() {
             </div>
             <div className="modal-body">
               {cancelError && <div className="alert alert-error">{cancelError}</div>}
-              <p style={{ marginBottom: '12px' }}>
-                {cancelTarget.status === 'PENDING'
-                  ? 'This pending booking will be cancelled immediately.'
-                  : 'This booking is already approved. An admin must approve the cancellation.'}
-              </p>
-              <div className="alert alert-info">
+              <div className="alert alert-info" style={{ marginBottom: '12px' }}>
                 <strong>Room:</strong> {cancelTarget.roomName}<br />
                 <strong>Purpose:</strong> {cancelTarget.purpose}<br />
                 <strong>When:</strong> {formatWhen(cancelTarget)}
+              </div>
+              <p style={{ marginBottom: '8px', fontSize: '13px', color: '#374151' }}>
+                {cancelTarget.status === 'PENDING'
+                  ? 'This pending booking will be cancelled immediately.'
+                  : 'This approved booking requires admin confirmation to cancel.'}
+              </p>
+              <div className="form-group">
+                <label className="form-label">
+                  Reason for cancellation * <span style={{ color: '#6b7280', fontWeight: 400 }}>(max 10 words)</span>
+                </label>
+                <textarea
+                  className="form-control"
+                  rows="2"
+                  value={cancelReason}
+                  onChange={handleReasonChange}
+                  placeholder="Briefly explain why you are cancelling..."
+                />
+                <div style={{ fontSize: '12px', color: remaining <= 2 ? '#ef4444' : '#6b7280', marginTop: '4px', textAlign: 'right' }}>
+                  {remaining} word{remaining !== 1 ? 's' : ''} remaining
+                </div>
               </div>
             </div>
             <div className="modal-footer">

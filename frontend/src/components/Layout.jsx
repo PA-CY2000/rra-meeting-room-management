@@ -15,6 +15,7 @@ export default function Layout({ children, title }) {
 
   const adminNav = [
     { path: '/dashboard', icon: '▪', label: 'Dashboard' },
+    { path: '/admin/rooms?add=1', icon: '▪', label: 'Add New Room' },
     { path: '/admin/rooms', icon: '▪', label: 'Manage Rooms' },
     { path: '/admin/bookings', icon: '▪', label: 'Booking Requests' },
     { path: '/admin/holidays', icon: '▪', label: 'Public Holidays' },
@@ -40,7 +41,7 @@ export default function Layout({ children, title }) {
           {navItems.map((item) => (
             <button
               key={item.path}
-              className={`nav-item ${location.pathname === item.path ? 'active' : ''}`}
+              className={`nav-item ${location.pathname === item.path.split('?')[0] && (item.path.includes('?add=1') ? false : true) || location.pathname + location.search === item.path ? 'active' : ''}`}
               onClick={() => navigate(item.path)}
             >
               <span className="nav-icon">{item.icon}</span>

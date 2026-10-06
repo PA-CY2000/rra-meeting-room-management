@@ -34,6 +34,7 @@ public class DataInitializer implements CommandLineRunner {
                     .email("admin@rra.gov.rw")
                     .password(passwordEncoder.encode("Admin@1234"))
                     .role(User.Role.ADMIN)
+                    .passwordChanged(true)
                     .build());
             log.info("Default admin created: admin@rra.gov.rw / Admin@1234");
         }
@@ -107,6 +108,7 @@ public class DataInitializer implements CommandLineRunner {
 
     private void updateBookingStatusConstraint() {
         try {
+            jdbcTemplate.execute("UPDATE users SET password_changed = false WHERE password_changed IS NULL");
             jdbcTemplate.execute("ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_status_check");
             jdbcTemplate.execute(
                 "ALTER TABLE bookings ADD CONSTRAINT bookings_status_check "

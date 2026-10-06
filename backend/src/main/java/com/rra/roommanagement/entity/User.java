@@ -24,6 +24,16 @@ public class User {
     @Column(nullable = false)
     private String password;
 
+    @Column
+    private String passwordResetToken;
+
+    @Column
+    private java.time.LocalDateTime resetTokenExpiry;
+
+    @Column(columnDefinition = "boolean default false")
+    @Builder.Default
+    private Boolean passwordChanged = false;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;

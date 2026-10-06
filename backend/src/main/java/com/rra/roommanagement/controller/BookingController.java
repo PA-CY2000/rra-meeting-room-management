@@ -54,9 +54,12 @@ public class BookingController {
     }
 
     @PutMapping("/{id}/cancel")
-    public ResponseEntity<ApiResponse<BookingResponse>> cancel(@PathVariable Long id, Authentication auth) {
+    public ResponseEntity<ApiResponse<BookingResponse>> cancel(@PathVariable Long id,
+                                                               @RequestBody(required = false) java.util.Map<String, String> body,
+                                                               Authentication auth) {
+        String reason = body != null ? body.get("reason") : null;
         return ResponseEntity.ok(ApiResponse.success("Cancel processed",
-                bookingService.cancelBooking(id, auth.getName())));
+                bookingService.cancelBooking(id, auth.getName(), reason)));
     }
 
     @PutMapping("/{id}/approve-cancel")

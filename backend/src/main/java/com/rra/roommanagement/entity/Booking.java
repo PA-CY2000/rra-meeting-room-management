@@ -28,6 +28,9 @@ public class Booking {
     @Column(nullable = false)
     private String purpose;
 
+    @Column(length = 500)
+    private String cancelReason;
+
     @Column(nullable = false)
     private LocalDate startDate;
 

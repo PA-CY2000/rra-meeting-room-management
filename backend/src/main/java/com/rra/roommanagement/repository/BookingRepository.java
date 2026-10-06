@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
@@ -20,23 +21,25 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     @Query("""
         SELECT b FROM Booking b
         WHERE b.room.id = :roomId
-        AND b.status IN ('PENDING', 'APPROVED', 'CANCEL_REQUESTED')
+        AND b.status IN :statuses
         AND b.startDate <= :endDate
         AND b.endDate >= :startDate
     """)
     List<Booking> findBlockingOverlaps(@Param("roomId") Long roomId,
                                        @Param("startDate") LocalDate startDate,
-                                       @Param("endDate") LocalDate endDate);
+                                       @Param("endDate") LocalDate endDate,
+                                       @Param("statuses") Collection<Booking.BookingStatus> statuses);
 
     long countByStatus(Booking.BookingStatus status);
 
     @Query("""
         SELECT b FROM Booking b JOIN FETCH b.room
-        WHERE b.status IN ('PENDING', 'APPROVED', 'CANCEL_REQUESTED')
+        WHERE b.status IN :statuses
         AND b.startDate <= :date
         AND b.endDate >= :date
     """)
-    List<Booking> findApprovedOverlappingDate(@Param("date") LocalDate date);
+    List<Booking> findApprovedOverlappingDate(@Param("date") LocalDate date,
+                                              @Param("statuses") Collection<Booking.BookingStatus> statuses);
 
     @Query("SELECT b FROM Booking b WHERE b.startDate = :today")
     List<Booking> findTodayBookings(@Param("today") LocalDate today);

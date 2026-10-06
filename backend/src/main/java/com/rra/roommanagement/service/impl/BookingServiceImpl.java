@@ -22,7 +22,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +33,8 @@ import java.util.List;
 public class BookingServiceImpl implements BookingService {
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
+    private static final Set<Booking.BookingStatus> BLOCKING_STATUSES =
+            EnumSet.of(Booking.BookingStatus.PENDING, Booking.BookingStatus.APPROVED, Booking.BookingStatus.CANCEL_REQUESTED);
 
     private final BookingRepository bookingRepository;
     private final RoomRepository roomRepository;
@@ -131,18 +135,20 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-    public BookingResponse cancelBooking(Long id, String userEmail) {
+    public BookingResponse cancelBooking(Long id, String userEmail, String reason) {
         Booking booking = findById(id);
         if (!booking.getUser().getEmail().equalsIgnoreCase(userEmail)) {
             throw new BadRequestException("You can only cancel your own bookings.");
         }
         if (booking.getStatus() == Booking.BookingStatus.PENDING) {
             booking.setStatus(Booking.BookingStatus.CANCELLED);
+            if (reason != null && !reason.isBlank()) booking.setCancelReason(reason.trim());
             log.info("Pending booking {} cancelled by {}", id, userEmail);
             return toResponse(bookingRepository.save(booking));
         }
         if (booking.getStatus() == Booking.BookingStatus.APPROVED) {
             booking.setStatus(Booking.BookingStatus.CANCEL_REQUESTED);
+            if (reason != null && !reason.isBlank()) booking.setCancelReason(reason.trim());
             log.info("Cancel requested for approved booking {} by {}", id, userEmail);
             return toResponse(bookingRepository.save(booking));
         }
@@ -181,7 +187,7 @@ public class BookingServiceImpl implements BookingService {
 
     private boolean hasTimeOverlap(Long roomId, LocalDateTime newStart, LocalDateTime newEnd, Long excludeId) {
         List<Booking> candidates = bookingRepository.findBlockingOverlaps(
-                roomId, newStart.toLocalDate(), newEnd.toLocalDate());
+                roomId, newStart.toLocalDate(), newEnd.toLocalDate(), BLOCKING_STATUSES);
         return candidates.stream()
                 .filter(b -> excludeId == null || !b.getId().equals(excludeId))
                 .anyMatch(b -> {
@@ -230,6 +236,7 @@ public class BookingServiceImpl implements BookingService {
         if (b.getStartTime() != null) r.setStartTime(b.getStartTime().format(TIME_FMT));
         if (b.getEndTime() != null) r.setEndTime(b.getEndTime().format(TIME_FMT));
         r.setStatus(b.getStatus().name());
+        r.setCancelReason(b.getCancelReason());
         r.setCreatedAt(b.getCreatedAt());
         if (b.getApprovedBy() != null) r.setApprovedByName(b.getApprovedBy().getFullName());
         r.setApprovedAt(b.getApprovedAt());

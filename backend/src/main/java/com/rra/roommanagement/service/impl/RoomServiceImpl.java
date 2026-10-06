@@ -13,14 +13,20 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class RoomServiceImpl implements RoomService {
+
+    private static final Set<Booking.BookingStatus> ACTIVE_STATUSES =
+            EnumSet.of(Booking.BookingStatus.PENDING, Booking.BookingStatus.APPROVED, Booking.BookingStatus.CANCEL_REQUESTED);
 
     private final RoomRepository roomRepository;
     private final BookingRepository bookingRepository;
@@ -65,18 +71,27 @@ public class RoomServiceImpl implements RoomService {
     @Override
     public List<RoomResponse> getAllRooms() {
         LocalDate today = LocalDate.now();
-        Map<Long, LocalDate> bookedUntilByRoom = new HashMap<>();
-        for (Booking booking : bookingRepository.findApprovedOverlappingDate(today)) {
+        Map<Long, Booking> activeBookingByRoom = new HashMap<>();
+        for (Booking booking : bookingRepository.findApprovedOverlappingDate(today, ACTIVE_STATUSES)) {
             Long roomId = booking.getRoom().getId();
-            LocalDate until = booking.getEndDate();
-            bookedUntilByRoom.merge(roomId, until, (a, b) -> a.isAfter(b) ? a : b);
+            activeBookingByRoom.merge(roomId, booking, (a, b) ->
+                a.getEndDate().isAfter(b.getEndDate()) ? a : b);
         }
+        DateTimeFormatter dateFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        DateTimeFormatter timeFmt = DateTimeFormatter.ofPattern("HH:mm");
         return roomRepository.findAll().stream()
                 .map(room -> {
                     RoomResponse response = toResponse(room);
-                    LocalDate bookedUntil = bookedUntilByRoom.get(room.getId());
-                    response.setCurrentlyBooked(bookedUntil != null);
-                    response.setBookedUntil(bookedUntil);
+                    Booking active = activeBookingByRoom.get(room.getId());
+                    if (active != null) {
+                        response.setCurrentlyBooked(true);
+                        response.setBookedFrom(active.getStartDate().format(dateFmt));
+                        response.setBookedUntil(active.getEndDate().format(dateFmt));
+                        if (active.getStartTime() != null)
+                            response.setBookedFromTime(active.getStartTime().format(timeFmt));
+                        if (active.getEndTime() != null)
+                            response.setBookedUntilTime(active.getEndTime().format(timeFmt));
+                    }
                     return response;
                 }).toList();
     }

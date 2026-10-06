@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import ManageRooms from './pages/ManageRooms';
 import AdminBookings from './pages/AdminBookings';
@@ -24,6 +26,8 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={user ? <Navigate to={user.role === 'ADMIN' ? '/dashboard' : '/rooms'} /> : <Login />} />
       <Route path="/register" element={user ? <Navigate to={user.role === 'ADMIN' ? '/dashboard' : '/rooms'} /> : <Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       {/* Admin routes */}
       <Route path="/dashboard" element={<PrivateRoute role="ADMIN"><Dashboard /></PrivateRoute>} />
