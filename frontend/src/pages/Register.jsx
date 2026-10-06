@@ -17,7 +17,7 @@ export default function Register() {
     setLoading(true);
     try {
       await api.post('/auth/register', form);
-      setSuccess('Account created! Your default password is RRA@2024 — go to Sign In and use it to log in. A password reset link will be sent to your email after your first login.');
+      setSuccess('Account created! Your default password is RRA@2026 — go to Sign In and use it to log in. A password reset link will be sent to your email after your first login.');
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed.');
     } finally {
@@ -76,7 +76,7 @@ export default function Register() {
             </div>
 
             <div className="alert alert-info" style={{ fontSize: '12px', marginBottom: '16px' }}>
-              Your default password is: <strong>RRA@2024</strong><br />
+              Your default password is: <strong>RRA@2026</strong><br />
               After signing in, a password reset link will be sent to your email.
             </div>
 
